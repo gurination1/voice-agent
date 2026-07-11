@@ -154,9 +154,16 @@ async def audio_stream(websocket: WebSocket):
         context_aggregator_user = LLMUserAggregator(context)
         context_aggregator_assistant = LLMAssistantAggregator(context)
 
+        # VAD
+        from pipecat.audio.vad.silero import SileroVADAnalyzer
+        from pipecat.processors.audio.vad_processor import VADProcessor
+        vad_analyzer = SileroVADAnalyzer()
+        vad = VADProcessor(vad_analyzer=vad_analyzer)
+
         # Create Pipeline
         pipeline = Pipeline([
             transport.input(),
+            vad,
             stt,
             context_aggregator_user,
             llm,
@@ -178,7 +185,7 @@ async def audio_stream(websocket: WebSocket):
         @transport.event_handler("on_client_connected")
         async def on_client_connected(transport, client):
             # Send initial frame to LLM to kickstart
-            await task.queue_frames([LLMMessagesAppendFrame([{"role": "user", "content": "Hello!"}])])
+            await task.queue_frames([LLMMessagesAppendFrame([{"role": "user", "content": "Hello!"}], run_llm=True)])
 
         runner = PipelineRunner()
         await runner.run(task)
