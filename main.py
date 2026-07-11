@@ -64,7 +64,12 @@ class ExotelFrameSerializer(FrameSerializer):
                 msg = json.loads(data)
                 event = msg.get("event")
                 if event == "start":
-                    self.stream_sid = msg.get("start", {}).get("streamSid", self.stream_sid)
+                    print(f"FULL START MSG: {json.dumps(msg)}")
+                    # Try Twilio format first
+                    self.stream_sid = msg.get("start", {}).get("streamSid")
+                    if not self.stream_sid:
+                        # Try Exotel format (maybe it's at root?)
+                        self.stream_sid = msg.get("streamSid", "")
                     print(f"Deserialized start event, stream_sid set to: {self.stream_sid}")
                 elif event == "media":
                     payload = msg["media"]["payload"]
