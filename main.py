@@ -10,9 +10,11 @@ from dotenv import load_dotenv
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.pipeline.runner import PipelineRunner
-from pipecat.services.google import GoogleLLMService
-from pipecat.services.sarvam import SarvamSTTService, SarvamTTSService
-from pipecat.vad.silero import SileroVADAnalyzer
+from pipecat.services.google.llm import GoogleLLMService
+from pipecat.services.sarvam.stt import SarvamSTTService
+from pipecat.services.sarvam.tts import SarvamTTSService
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.transports.network.websocket_server import WebsocketServerParams, WebsocketServerTransport
 from pipecat.serializers.base_serializer import FrameSerializer
 from pipecat.frames.frames import AudioRawFrame, TextFrame
@@ -129,36 +131,42 @@ async def audio_stream(websocket: WebSocket):
         )
 
         stt = SarvamSTTService(
-            api_key=os.getenv("SARVAM_API_KEY"),
-            model="saaras:v2",
-            language="en-IN"
+            api_key=os.getenv("SARVAM_API_KEY")
         )
         
         llm = GoogleLLMService(
             api_key=os.getenv("GEMINI_API_KEY"),
-            model="gemini-2.5-flash"
+            settings=GoogleLLMService.Settings(
+                model="gemini-2.5-flash"
+            )
         )
         
         tts = SarvamTTSService(
-            api_key=os.getenv("SARVAM_API_KEY"),
-            voice="anushka"
+            api_key=os.getenv("SARVAM_API_KEY")
         )
 
         # Context aggregator
+        from pipecat.processors.aggregators.llm_response import LLMUserResponseAggregator, LLMAssistantResponseAggregator
+        
         context = OpenAILLMContext(
             messages=[{"role": "system", "content": SYSTEM_PROMPT}]
         )
-        context_aggregator = llm.create_context_aggregator(context)
+        context_aggregator_user = LLMUserResponseAggregator(
+            context.get_messages()
+        )
+        context_aggregator_assistant = LLMAssistantResponseAggregator(
+            context.get_messages()
+        )
 
         # Create Pipeline
         pipeline = Pipeline([
             transport.input(),
             stt,
-            context_aggregator.user(),
+            context_aggregator_user,
             llm,
             tts,
             transport.output(),
-            context_aggregator.assistant()
+            context_aggregator_assistant
         ])
 
         task = PipelineTask(
