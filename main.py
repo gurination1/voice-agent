@@ -36,7 +36,7 @@ class ExotelFrameSerializer(FrameSerializer):
     def __init__(self, stream_sid: str):
         self.stream_sid = stream_sid
 
-    def serialize(self, frame) -> str | bytes:
+    async def serialize(self, frame) -> str | bytes:
         if isinstance(frame, AudioRawFrame):
             try:
                 # Sarvam TTS is typically 16kHz or Pipecat normalizes to 16kHz
@@ -56,7 +56,7 @@ class ExotelFrameSerializer(FrameSerializer):
                 return ""
         return ""
 
-    def deserialize(self, data: str | bytes):
+    async def deserialize(self, data: str | bytes):
         if isinstance(data, str):
             try:
                 msg = json.loads(data)
