@@ -19,6 +19,7 @@ from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, Fast
 from pipecat.serializers.base_serializer import FrameSerializer
 from pipecat.frames.frames import AudioRawFrame, InputAudioRawFrame, OutputAudioRawFrame, TextFrame, LLMMessagesAppendFrame
 
+from pipecat.transcriptions.language import Language
 from agent import SYSTEM_PROMPT
 from exotel_handler import initiate_outbound_call
 
@@ -169,12 +170,17 @@ async def audio_stream(websocket: WebSocket):
         llm = GoogleLLMService(
             api_key=os.getenv("GEMINI_API_KEY"),
             settings=GoogleLLMService.Settings(
-                model="gemini-flash-latest"
+                model="gemini-3.1-flash-lite"
             )
         )
         
         tts = SarvamTTSService(
-            api_key=os.getenv("SARVAM_API_KEY")
+            api_key=os.getenv("SARVAM_API_KEY"),
+            settings=SarvamTTSService.Settings(
+                model="bulbul:v3",
+                voice="priya",
+                language=Language.EN_IN
+            )
         )
 
         # Context aggregator
