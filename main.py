@@ -145,18 +145,14 @@ async def audio_stream(websocket: WebSocket):
         )
 
         # Context aggregator
-        from pipecat.processors.aggregators.llm_response import LLMUserResponseAggregator, LLMAssistantResponseAggregator
+        from pipecat.processors.aggregators.llm_response_universal import LLMUserAggregator, LLMAssistantAggregator
         from pipecat.processors.aggregators.llm_context import LLMContext
         
         context = LLMContext(
             messages=[{"role": "system", "content": SYSTEM_PROMPT}]
         )
-        context_aggregator_user = LLMUserResponseAggregator(
-            context.get_messages()
-        )
-        context_aggregator_assistant = LLMAssistantResponseAggregator(
-            context.get_messages()
-        )
+        context_aggregator_user = LLMUserAggregator(context)
+        context_aggregator_assistant = LLMAssistantAggregator(context)
 
         # Create Pipeline
         pipeline = Pipeline([
