@@ -136,7 +136,7 @@ async def audio_stream(websocket: WebSocket):
         llm = GoogleLLMService(
             api_key=os.getenv("GEMINI_API_KEY"),
             settings=GoogleLLMService.Settings(
-                model="gemini-2.0-flash"
+                model="gemini-flash-latest"
             )
         )
         
