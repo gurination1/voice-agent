@@ -1,4 +1,4 @@
-pipecat-ai[sarvam,google,silero]
+pipecat-ai[sarvam,google,silero,websocket]
 fastapi
 uvicorn
 httpx
