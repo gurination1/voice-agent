@@ -20,8 +20,14 @@ from pipecat.serializers.base_serializer import FrameSerializer
 from pipecat.frames.frames import AudioRawFrame, InputAudioRawFrame, OutputAudioRawFrame, TextFrame, LLMMessagesAppendFrame
 
 from pipecat.transcriptions.language import Language
+from pipecat.frames.frames import StartFrame
 from agent import SYSTEM_PROMPT
 from exotel_handler import initiate_outbound_call
+
+class CustomSarvamTTSService(SarvamTTSService):
+    async def start(self, frame: StartFrame):
+        await super().start(frame)
+        await self._connect()
 
 load_dotenv()
 
@@ -174,9 +180,9 @@ async def audio_stream(websocket: WebSocket):
             )
         )
         
-        tts = SarvamTTSService(
+        tts = CustomSarvamTTSService(
             api_key=os.getenv("SARVAM_API_KEY"),
-            settings=SarvamTTSService.Settings(
+            settings=CustomSarvamTTSService.Settings(
                 model="bulbul:v3",
                 voice="priya",
                 language=Language.EN_IN
