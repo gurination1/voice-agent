@@ -1,0 +1,7 @@
+pipecat-ai[sarvam,google]
+fastapi
+uvicorn
+httpx
+python-dotenv
+websockets
+requests
