@@ -18,7 +18,6 @@ from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.transports.websocket.server import WebsocketServerParams, WebsocketServerTransport
 from pipecat.serializers.base_serializer import FrameSerializer
 from pipecat.frames.frames import AudioRawFrame, TextFrame
-from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 
 from agent import SYSTEM_PROMPT
 from exotel_handler import initiate_outbound_call
@@ -147,8 +146,9 @@ async def audio_stream(websocket: WebSocket):
 
         # Context aggregator
         from pipecat.processors.aggregators.llm_response import LLMUserResponseAggregator, LLMAssistantResponseAggregator
+        from pipecat.processors.aggregators.llm_context import LLMContext
         
-        context = OpenAILLMContext(
+        context = LLMContext(
             messages=[{"role": "system", "content": SYSTEM_PROMPT}]
         )
         context_aggregator_user = LLMUserResponseAggregator(
