@@ -67,6 +67,7 @@ class ExotelFrameSerializer(FrameSerializer):
                     self._chunk_counter += 1
                     msg = {
                         "event": "media",
+                        "sequence_number": self._chunk_counter,
                         "stream_sid": self.stream_sid,
                         "media": {
                             "chunk": self._chunk_counter,
