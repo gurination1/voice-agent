@@ -17,7 +17,7 @@ from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, FastAPIWebsocketParams
 from pipecat.serializers.base_serializer import FrameSerializer
-from pipecat.frames.frames import AudioRawFrame, TextFrame
+from pipecat.frames.frames import AudioRawFrame, TextFrame, LLMMessagesFrame
 
 from agent import SYSTEM_PROMPT
 from exotel_handler import initiate_outbound_call
@@ -167,7 +167,7 @@ async def audio_stream(websocket: WebSocket):
 
         task = PipelineTask(
             pipeline,
-            PipelineParams(
+            params=PipelineParams(
                 allow_interruptions=True,
                 enable_metrics=True,
                 enable_usage_metrics=True
@@ -178,7 +178,7 @@ async def audio_stream(websocket: WebSocket):
         @transport.event_handler("on_client_connected")
         async def on_client_connected(transport, client):
             # Send initial frame to LLM to kickstart
-            pass
+            await task.queue_frames([LLMMessagesFrame(context.get_messages())])
 
         runner = PipelineRunner()
         await runner.run(task)
