@@ -42,6 +42,9 @@ class ExotelFrameSerializer(FrameSerializer):
     def __init__(self, stream_sid: str = ""):
         self.stream_sid = stream_sid
         self._chunk_counter = 0
+        self._audio_buffer = b""
+        # Exotel min chunk = 3.2k bytes, must be multiple of 320
+        self._min_chunk_size = 3200
 
     async def serialize(self, frame) -> str | bytes:
         if isinstance(frame, AudioRawFrame):
@@ -52,19 +55,28 @@ class ExotelFrameSerializer(FrameSerializer):
                 else:
                     pcm_8k = frame.audio
 
-                # Exotel expects raw PCM 16-bit LE base64, NOT ulaw
-                payload = base64.b64encode(pcm_8k).decode("utf-8")
-                self._chunk_counter += 1
-                msg = {
-                    "event": "media",
-                    "stream_sid": self.stream_sid,
-                    "media": {
-                        "chunk": self._chunk_counter,
-                        "timestamp": str(self._chunk_counter * 20),
-                        "payload": payload
+                # Buffer audio until we have enough for Exotel's minimum chunk
+                self._audio_buffer += pcm_8k
+                
+                if len(self._audio_buffer) >= self._min_chunk_size:
+                    # Send the buffered audio
+                    chunk = self._audio_buffer
+                    self._audio_buffer = b""
+                    
+                    payload = base64.b64encode(chunk).decode("utf-8")
+                    self._chunk_counter += 1
+                    msg = {
+                        "event": "media",
+                        "stream_sid": self.stream_sid,
+                        "media": {
+                            "chunk": self._chunk_counter,
+                            "timestamp": str(self._chunk_counter * 200),
+                            "payload": payload
+                        }
                     }
-                }
-                return json.dumps(msg)
+                    return json.dumps(msg)
+                # Not enough data yet, return empty
+                return ""
             except Exception as e:
                 print(f"Serialize error: {e}")
                 return ""
