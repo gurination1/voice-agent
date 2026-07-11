@@ -15,7 +15,7 @@ from pipecat.services.sarvam.stt import SarvamSTTService
 from pipecat.services.sarvam.tts import SarvamTTSService
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
-from pipecat.transports.websocket.server import WebsocketServerParams, WebsocketServerTransport
+from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, FastAPIWebsocketParams
 from pipecat.serializers.base_serializer import FrameSerializer
 from pipecat.frames.frames import AudioRawFrame, TextFrame
 
@@ -119,14 +119,14 @@ async def audio_stream(websocket: WebSocket):
 
     try:
         serializer = ExotelFrameSerializer(stream_sid="")
-        transport = WebsocketServerTransport(
+        transport = FastAPIWebsocketTransport(
             websocket=websocket,
-            params=WebsocketServerParams(
+            params=FastAPIWebsocketParams(
                 audio_out_enabled=True,
                 add_wav_header=False,
                 audio_in_enabled=True,
-            ),
-            serializer=serializer
+                serializer=serializer
+            )
         )
 
         stt = SarvamSTTService(
