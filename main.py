@@ -43,25 +43,22 @@ class ExotelFrameSerializer(FrameSerializer):
         self.stream_sid = stream_sid
         self._chunk_counter = 0
         self._audio_buffer = b""
-        # Exotel min chunk = 3.2k bytes, must be multiple of 320
-        self._min_chunk_size = 3200
+        # Send immediately when we have 640 bytes (40ms at 8kHz)
+        self._min_chunk_size = 640
 
     async def serialize(self, frame) -> str | bytes:
         if isinstance(frame, AudioRawFrame):
             try:
-                print(f"Serializer: got AudioRawFrame, len={len(frame.audio)}, rate={frame.sample_rate}")
                 # Resample from TTS output rate (24kHz from Sarvam) to 8kHz for Exotel
                 if frame.sample_rate != 8000:
                     pcm_8k, _ = audioop.ratecv(frame.audio, 2, 1, frame.sample_rate, 8000, None)
                 else:
                     pcm_8k = frame.audio
 
-                # Buffer audio until we have enough for Exotel's minimum chunk
+                # Buffer audio
                 self._audio_buffer += pcm_8k
-                print(f"Serializer: buffer size now {len(self._audio_buffer)}")
                 
                 if len(self._audio_buffer) >= self._min_chunk_size:
-                    # Send the buffered audio
                     chunk = self._audio_buffer
                     self._audio_buffer = b""
                     
@@ -73,18 +70,15 @@ class ExotelFrameSerializer(FrameSerializer):
                         "stream_sid": self.stream_sid,
                         "media": {
                             "chunk": self._chunk_counter,
-                            "timestamp": str(self._chunk_counter * 200),
+                            "timestamp": str(self._chunk_counter * 40),
                             "payload": payload
                         }
                     }
-                    print(f"Serializer: SENDING media chunk {self._chunk_counter}, len={len(chunk)}")
                     return json.dumps(msg)
                 return ""
             except Exception as e:
                 print(f"Serialize error: {e}")
                 return ""
-        else:
-            print(f"Serializer: got non-audio frame: {type(frame).__name__}")
         return ""
 
     async def deserialize(self, data: str | bytes):
@@ -219,11 +213,14 @@ async def audio_stream(websocket: WebSocket):
             )
         )
 
-        # Initial prompt to speak immediately on connection
+        # Initial welcome greeting immediately on connection to bypass initial LLM latency
         @transport.event_handler("on_client_connected")
         async def on_client_connected(transport, client):
-            # Send initial frame to LLM to kickstart
-            await task.queue_frames([LLMMessagesAppendFrame([{"role": "user", "content": "Hello!"}], run_llm=True)])
+            welcome_text = "Hello sir! How are you? This is Priya calling from Digital Grow — we help local businesses build their online presence. Do you have two free minutes?"
+            await task.queue_frames([
+                TextFrame(welcome_text),
+                LLMMessagesAppendFrame([{"role": "assistant", "content": welcome_text}], run_llm=False)
+            ])
 
         runner = PipelineRunner()
         await runner.run(task)
