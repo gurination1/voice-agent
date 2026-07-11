@@ -136,7 +136,7 @@ async def audio_stream(websocket: WebSocket):
         llm = GoogleLLMService(
             api_key=os.getenv("GEMINI_API_KEY"),
             settings=GoogleLLMService.Settings(
-                model="gemini-2.5-flash"
+                model="gemini-1.5-flash"
             )
         )
         
@@ -188,4 +188,7 @@ async def audio_stream(websocket: WebSocket):
     finally:
         print("WebSocket connection closed")
         if not websocket.client_state.name == "DISCONNECTED":
-            await websocket.close()
+            try:
+                await websocket.close()
+            except RuntimeError:
+                pass
