@@ -17,7 +17,7 @@ from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, FastAPIWebsocketParams
 from pipecat.serializers.base_serializer import FrameSerializer
-from pipecat.frames.frames import AudioRawFrame, TextFrame, LLMMessagesAppendFrame
+from pipecat.frames.frames import AudioRawFrame, InputAudioRawFrame, OutputAudioRawFrame, TextFrame, LLMMessagesAppendFrame
 
 from agent import SYSTEM_PROMPT
 from exotel_handler import initiate_outbound_call
@@ -69,7 +69,7 @@ class ExotelFrameSerializer(FrameSerializer):
                     pcm_8k = audioop.ulaw2lin(ulaw_audio, 2)
                     # Convert 8kHz to 16kHz PCM for Sarvam
                     pcm_16k, _ = audioop.ratecv(pcm_8k, 2, 1, 8000, 16000, None)
-                    return AudioRawFrame(audio=pcm_16k, sample_rate=16000, num_channels=1)
+                    return InputAudioRawFrame(audio=pcm_16k, sample_rate=16000, num_channels=1)
             except Exception as e:
                 print(f"Deserialize error: {e}")
         return None
