@@ -65,11 +65,6 @@ class ExotelFrameSerializer(FrameSerializer):
                     payload = base64.b64encode(chunk).decode("utf-8")
                     self._chunk_counter += 1
                     
-                    # Check if audio is silent
-                    max_val = audioop.max(chunk, 2)
-                    hex_prefix = chunk[:10].hex()
-                    print(f"SERIALIZING: Sending media event, stream_sid={self.stream_sid}, chunk={self._chunk_counter}, max_val={max_val}, hex_prefix={hex_prefix}")
-                    
                     msg = {
                         "event": "media",
                         "sequence_number": str(self._chunk_counter),  # String format
@@ -85,8 +80,6 @@ class ExotelFrameSerializer(FrameSerializer):
             except Exception as e:
                 print(f"Serialize error: {e}")
                 return ""
-        else:
-            print(f"SERIALIZING: Ignored frame type {type(frame).__name__}")
         return ""
 
     async def deserialize(self, data: str | bytes):
