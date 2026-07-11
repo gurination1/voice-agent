@@ -33,24 +33,36 @@ elif RAILWAY_URL.startswith("http://"):
     RAILWAY_URL = RAILWAY_URL.replace("http://", "")
 
 class ExotelFrameSerializer(FrameSerializer):
-    def __init__(self, stream_sid: str):
+    """Serializer for Exotel bidirectional WebSocket streams.
+    
+    Exotel sends/receives raw PCM (SLIN 16-bit LE, mono) at 8kHz,
+    base64-encoded. NOT ulaw — raw linear PCM.
+    Uses snake_case field names (stream_sid, not streamSid).
+    """
+    def __init__(self, stream_sid: str = ""):
         self.stream_sid = stream_sid
+        self._chunk_counter = 0
 
     async def serialize(self, frame) -> str | bytes:
-        print(f"Serialize called with frame type: {type(frame).__name__}")
         if isinstance(frame, AudioRawFrame):
             try:
-                print(f"Serializing audio frame: {len(frame.audio)} bytes, sample_rate: {frame.sample_rate}")
-                # Sarvam TTS is typically 16kHz or Pipecat normalizes to 16kHz
-                # Convert PCM 16kHz down to 8kHz
-                pcm_8k, _ = audioop.ratecv(frame.audio, 2, 1, frame.sample_rate, 8000, None)
-                # Convert PCM to ulaw
-                ulaw_audio = audioop.lin2ulaw(pcm_8k, 2)
-                payload = base64.b64encode(ulaw_audio).decode("utf-8")
+                # Resample from TTS output rate (24kHz from Sarvam) to 8kHz for Exotel
+                if frame.sample_rate != 8000:
+                    pcm_8k, _ = audioop.ratecv(frame.audio, 2, 1, frame.sample_rate, 8000, None)
+                else:
+                    pcm_8k = frame.audio
+
+                # Exotel expects raw PCM 16-bit LE base64, NOT ulaw
+                payload = base64.b64encode(pcm_8k).decode("utf-8")
+                self._chunk_counter += 1
                 msg = {
                     "event": "media",
-                    "streamSid": self.stream_sid,
-                    "media": {"payload": payload}
+                    "stream_sid": self.stream_sid,
+                    "media": {
+                        "chunk": self._chunk_counter,
+                        "timestamp": str(self._chunk_counter * 20),
+                        "payload": payload
+                    }
                 }
                 return json.dumps(msg)
             except Exception as e:
@@ -64,23 +76,21 @@ class ExotelFrameSerializer(FrameSerializer):
                 msg = json.loads(data)
                 event = msg.get("event")
                 if event == "start":
-                    print(f"FULL START MSG: {json.dumps(msg)}")
-                    # Try Twilio format first
-                    self.stream_sid = msg.get("start", {}).get("streamSid")
-                    if not self.stream_sid:
-                        # Try Exotel format (maybe it's at root?)
-                        self.stream_sid = msg.get("streamSid", "")
-                    print(f"Deserialized start event, stream_sid set to: {self.stream_sid}")
+                    # Exotel uses snake_case: stream_sid (both at root and in start obj)
+                    self.stream_sid = (
+                        msg.get("start", {}).get("stream_sid")
+                        or msg.get("stream_sid", "")
+                    )
+                    print(f"Stream started, stream_sid: {self.stream_sid}")
                 elif event == "media":
                     payload = msg["media"]["payload"]
-                    ulaw_audio = base64.b64decode(payload)
-                    # Convert ulaw 8kHz to PCM 8kHz
-                    pcm_8k = audioop.ulaw2lin(ulaw_audio, 2)
-                    # Convert 8kHz to 16kHz PCM for Sarvam
+                    # Exotel sends raw PCM 16-bit LE at 8kHz, base64-encoded (NOT ulaw)
+                    pcm_8k = base64.b64decode(payload)
+                    # Resample 8kHz → 16kHz for Sarvam STT
                     pcm_16k, _ = audioop.ratecv(pcm_8k, 2, 1, 8000, 16000, None)
                     return InputAudioRawFrame(audio=pcm_16k, sample_rate=16000, num_channels=1)
-                else:
-                    print(f"Deserialized event: {event}")
+                elif event == "stop":
+                    print("Stream stopped by Exotel")
             except Exception as e:
                 print(f"Deserialize error: {e}")
         return None
