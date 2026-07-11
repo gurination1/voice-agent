@@ -49,6 +49,7 @@ class ExotelFrameSerializer(FrameSerializer):
     async def serialize(self, frame) -> str | bytes:
         if isinstance(frame, AudioRawFrame):
             try:
+                print(f"Serializer: got AudioRawFrame, len={len(frame.audio)}, rate={frame.sample_rate}")
                 # Resample from TTS output rate (24kHz from Sarvam) to 8kHz for Exotel
                 if frame.sample_rate != 8000:
                     pcm_8k, _ = audioop.ratecv(frame.audio, 2, 1, frame.sample_rate, 8000, None)
@@ -57,6 +58,7 @@ class ExotelFrameSerializer(FrameSerializer):
 
                 # Buffer audio until we have enough for Exotel's minimum chunk
                 self._audio_buffer += pcm_8k
+                print(f"Serializer: buffer size now {len(self._audio_buffer)}")
                 
                 if len(self._audio_buffer) >= self._min_chunk_size:
                     # Send the buffered audio
@@ -75,12 +77,14 @@ class ExotelFrameSerializer(FrameSerializer):
                             "payload": payload
                         }
                     }
+                    print(f"Serializer: SENDING media chunk {self._chunk_counter}, len={len(chunk)}")
                     return json.dumps(msg)
-                # Not enough data yet, return empty
                 return ""
             except Exception as e:
                 print(f"Serialize error: {e}")
                 return ""
+        else:
+            print(f"Serializer: got non-audio frame: {type(frame).__name__}")
         return ""
 
     async def deserialize(self, data: str | bytes):
