@@ -72,11 +72,10 @@ class ExotelFrameSerializer(FrameSerializer):
                     
                     msg = {
                         "event": "media",
-                        "sequence_number": self._chunk_counter,
+                        "sequence_number": str(self._chunk_counter),  # String format
                         "stream_sid": self.stream_sid,
-                        "streamSid": self.stream_sid,  # Include both to be safe
                         "media": {
-                            "chunk": self._chunk_counter,
+                            "chunk": str(self._chunk_counter),  # Exotel expects string for chunk!
                             "timestamp": str(self._chunk_counter * 40),
                             "payload": payload
                         }
