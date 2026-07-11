@@ -74,11 +74,14 @@ class ExotelFrameSerializer(FrameSerializer):
                             "payload": payload
                         }
                     }
+                    print(f"SERIALIZING: Sending media event, stream_sid={self.stream_sid}, chunk={self._chunk_counter}, payload_len={len(payload)}")
                     return json.dumps(msg)
                 return ""
             except Exception as e:
                 print(f"Serialize error: {e}")
                 return ""
+        else:
+            print(f"SERIALIZING: Ignored frame type {type(frame).__name__}")
         return ""
 
     async def deserialize(self, data: str | bytes):
