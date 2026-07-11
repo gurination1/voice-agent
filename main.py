@@ -37,8 +37,10 @@ class ExotelFrameSerializer(FrameSerializer):
         self.stream_sid = stream_sid
 
     async def serialize(self, frame) -> str | bytes:
+        print(f"Serialize called with frame type: {type(frame).__name__}")
         if isinstance(frame, AudioRawFrame):
             try:
+                print(f"Serializing audio frame: {len(frame.audio)} bytes, sample_rate: {frame.sample_rate}")
                 # Sarvam TTS is typically 16kHz or Pipecat normalizes to 16kHz
                 # Convert PCM 16kHz down to 8kHz
                 pcm_8k, _ = audioop.ratecv(frame.audio, 2, 1, frame.sample_rate, 8000, None)
@@ -60,9 +62,11 @@ class ExotelFrameSerializer(FrameSerializer):
         if isinstance(data, str):
             try:
                 msg = json.loads(data)
-                if msg.get("event") == "start":
+                event = msg.get("event")
+                if event == "start":
                     self.stream_sid = msg.get("start", {}).get("streamSid", self.stream_sid)
-                elif msg.get("event") == "media":
+                    print(f"Deserialized start event, stream_sid set to: {self.stream_sid}")
+                elif event == "media":
                     payload = msg["media"]["payload"]
                     ulaw_audio = base64.b64decode(payload)
                     # Convert ulaw 8kHz to PCM 8kHz
@@ -70,6 +74,8 @@ class ExotelFrameSerializer(FrameSerializer):
                     # Convert 8kHz to 16kHz PCM for Sarvam
                     pcm_16k, _ = audioop.ratecv(pcm_8k, 2, 1, 8000, 16000, None)
                     return InputAudioRawFrame(audio=pcm_16k, sample_rate=16000, num_channels=1)
+                else:
+                    print(f"Deserialized event: {event}")
             except Exception as e:
                 print(f"Deserialize error: {e}")
         return None
